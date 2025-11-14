@@ -1,0 +1,5 @@
+{
+  "name": "JSON to TOON Converter",
+  "description": "A simple and beautiful web application to convert JSON data into the TOON (Token-Oriented Object Notation) format in real-time.",
+  "requestFramePermissions": []
+}
