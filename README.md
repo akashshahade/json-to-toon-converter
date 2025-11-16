@@ -2,9 +2,7 @@
 
 Optimize your LLM prompts by converting JSON into the compact, token-efficient TOON format. Less fluff, more data — free, fast, and entirely in your browser.
 
-![JSON to TOON screenshot](assets/screenshot.png)
-
-> Screenshot: Save the image you provided as `assets/screenshot.png` (or update the path below) so it shows up here.
+<img width="1537" height="935" alt="image" src="https://github.com/user-attachments/assets/0d538925-2e28-4710-bab6-89f158915081" />
 
 Table of contents
 - About
