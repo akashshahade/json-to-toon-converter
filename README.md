@@ -2,7 +2,7 @@
 
 Optimize your LLM prompts by converting JSON into the compact, token-efficient TOON format. Less fluff, more data — free, fast, and entirely in your browser.
 
-<img width="1537" height="935" alt="image" src="https://github.com/user-attachments/assets/0d538925-2e28-4710-bab6-89f158915081" />
+<img width="1572" height="930" alt="image" src="https://github.com/user-attachments/assets/b4cddfee-9644-4aad-a033-9cc49a4c6bc3" />
 
 Table of contents
 - About
