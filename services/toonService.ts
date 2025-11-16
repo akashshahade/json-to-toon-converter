@@ -25,24 +25,45 @@ const formatSimpleValue = (value: any): string => {
 };
 
 const isUniformObjectArray = (arr: any[]): boolean => {
+    // Must have at least one item to determine the structure.
     if (arr.length < 1) return false;
+    
     const firstItem = arr[0];
-    if (typeof firstItem !== 'object' || firstItem === null || Array.isArray(firstItem)) return false;
-    const firstKeys = Object.keys(firstItem).sort();
-    if (firstKeys.length === 0) return false; 
-    for (const key of firstKeys) {
-        if (!isPrimitive(firstItem[key])) return false;
+    // All items must be non-null objects (and not arrays).
+    if (typeof firstItem !== 'object' || firstItem === null || Array.isArray(firstItem)) {
+        return false;
     }
+
+    const firstKeys = Object.keys(firstItem).sort();
+    // Objects must have keys to be considered for tabular format.
+    if (firstKeys.length === 0) return false; 
+
+    // Check all other items in the array.
     return arr.every(item => {
+        // Ensure item is a valid object with the same structure.
         if (typeof item !== 'object' || item === null || Array.isArray(item)) return false;
+        
         const currentKeys = Object.keys(item).sort();
-        if (currentKeys.length !== firstKeys.length || !currentKeys.every((key, i) => key === firstKeys[i])) return false;
-        for (const key of currentKeys) {
-            if (!isPrimitive(item[key])) return false;
-        }
-        return true;
+        if (currentKeys.length !== firstKeys.length) return false;
+        
+        // Compare keys to ensure they are identical.
+        return currentKeys.every((key, i) => key === firstKeys[i]);
     });
 };
+
+
+const formatRowValue = (value: any): string => {
+    if (isPrimitive(value)) {
+        return formatSimpleValue(value);
+    }
+    // For both arrays and objects, use JSON.stringify for a compact, single-line representation.
+    if (typeof value === 'object' && value !== null) {
+        const serialized = JSON.stringify(value);
+        // Let formatSimpleValue handle quoting if the serialized string contains special characters.
+        return formatSimpleValue(serialized);
+    }
+    return ''; // Should not be reached for valid JSON
+}
 
 const isSimpleArray = (arr: any[]): boolean => arr.every(isPrimitive);
 
@@ -53,29 +74,41 @@ const formatValue = (value: any, level: number): string => {
 
     if (Array.isArray(value)) {
         if (value.length === 0) return '[]';
+        
+        // This is the core logic fix: Use the updated isUniformObjectArray to format correctly.
+        if (isUniformObjectArray(value)) {
+            const keys = Object.keys(value[0]);
+            const header = `{${keys.join(',')}}:`;
+            const rows = value.map(item => '  '.repeat(level + 1) + keys.map(k => formatRowValue(item[k])).join(',')).join('\n');
+            return `${header}\n${rows}`;
+        }
 
+        if (isSimpleArray(value)) {
+             return value.map(item => `${indent}- ${formatSimpleValue(item)}`).join('\n');
+        }
+
+        // Fallback for non-uniform arrays of objects or mixed arrays.
         return value.map(item => {
             if (isPrimitive(item)) {
                 return `${indent}- ${formatSimpleValue(item)}`;
             }
-            // For objects or nested arrays in a list
             if (typeof item === 'object' && item !== null) {
                 const entries = Object.entries(item);
                 if (entries.length === 0) return `${indent}- {}`;
 
-                return entries.map(([key, val], index) => {
-                    const prefix = (index === 0) ? '- ' : '  ';
-                    const lineIndent = `${indent}${prefix}`;
-                    const content = formatValue(val, level + 2); // Indent nested content further
-                    
+                const nestedContent = entries.map(([key, val]) => {
+                    const content = formatValue(val, level + 2);
                     if (Array.isArray(val)) {
-                        return `${lineIndent}${key}[${val.length}]:\n${content}`;
+                        if (val.length === 0) return `  ${key}[]:`;
+                        return `  ${key}[${val.length}]:\n${content}`;
                     }
                     if (typeof val === 'object' && val !== null) {
-                        return `${lineIndent}${key}:\n${content}`;
+                        return `  ${key}:\n${content}`;
                     }
-                    return `${lineIndent}${key}: ${formatSimpleValue(val)}`;
+                    return `  ${key}: ${formatSimpleValue(val)}`;
                 }).join('\n');
+                
+                return `${indent}- ${nestedContent.trimStart()}`;
             }
             return ''; // Should not happen
         }).join('\n');
@@ -90,7 +123,7 @@ const formatValue = (value: any, level: number): string => {
                 if (isUniformObjectArray(val)) {
                     const keys = Object.keys(val[0]);
                     const header = `${key}[${val.length}]{${keys.join(',')}}:`;
-                    const rows = val.map(item => '  '.repeat(level + 1) + keys.map(k => formatSimpleValue(item[k])).join(',')).join('\n');
+                    const rows = val.map(item => '  '.repeat(level + 1) + keys.map(k => formatRowValue(item[k])).join(',')).join('\n');
                     return `${indent}${header}\n${rows}`;
                 }
                 if (isSimpleArray(val)) {
@@ -122,6 +155,10 @@ export const convertJsonToToon = (jsonString: string): string => {
   }
   try {
     const data = JSON.parse(jsonString);
+    // Handle case where top-level is a uniform array of objects
+    if (Array.isArray(data) && isUniformObjectArray(data)) {
+        return formatValue(data, -1); // Start level at -1 to get correct indentation
+    }
     return formatValue(data, 0);
   } catch (error) {
     if (error instanceof SyntaxError) {
